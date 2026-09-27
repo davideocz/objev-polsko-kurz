@@ -1,0 +1,37 @@
+name: Kurz ČNB
+
+on:
+  # Všední dny ve 14:00 UTC (16:00 letního / 15:00 zimního času),
+  # ČNB kurz vyhlašuje po 14:30 českého času.
+  schedule:
+    - cron: "0 14 * * 1-5"
+  # Ruční spuštění: záložka Actions → Kurz ČNB → Run workflow.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  kurz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Stáhnout kurz PLN
+        run: python scripts/stahni_kurz.py
+
+      - name: Uložit změnu
+        run: |
+          if git diff --quiet -- kurz.json; then
+            echo "Beze změny."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add kurz.json
+          git commit -m "Kurz ČNB $(python -c 'import json;print(json.load(open("kurz.json"))["datum"])')"
+          git push
